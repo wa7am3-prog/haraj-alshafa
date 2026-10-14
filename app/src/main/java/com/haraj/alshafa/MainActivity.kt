@@ -1,7 +1,8 @@
 package com.haraj.alshafa
 
 import androidx.appcompat.app.AppCompatActivity
-import android.app.AlertDialog
+...
+class MainActivity : AppCompatActivity() {
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
