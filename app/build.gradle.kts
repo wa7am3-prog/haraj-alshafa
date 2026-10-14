@@ -10,14 +10,11 @@ android {
         applicationId = "com.haraj.alshafa"
         minSdk = 24
         targetSdk = 34
-        versionCode = 5
-        versionName = "5.0 Legend"
+        versionCode = 6
+        versionName = "6.0 Legendary"
     }
     buildTypes { release { isMinifyEnabled = false } }
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
-    }
+    compileOptions { sourceCompatibility = JavaVersion.VERSION_1_8; targetCompatibility = JavaVersion.VERSION_1_8 }
     kotlinOptions { jvmTarget = "1.8" }
 }
 dependencies {
