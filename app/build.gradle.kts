@@ -10,8 +10,8 @@ android {
         applicationId = "com.haraj.alshafa"
         minSdk = 24
         targetSdk = 34
-        versionCode = 4
-        versionName = "4.0 Online"
+        versionCode = 5
+        versionName = "5.0 Legend"
     }
     buildTypes { release { isMinifyEnabled = false } }
     compileOptions {
@@ -27,4 +27,5 @@ dependencies {
     implementation("androidx.recyclerview:recyclerview:1.3.2")
     implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
     implementation("com.google.firebase:firebase-firestore")
+    implementation("com.google.firebase:firebase-auth")
 }
