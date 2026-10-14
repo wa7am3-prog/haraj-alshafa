@@ -1,16 +1,18 @@
 package com.haraj.alshafa
 
+import android.app.Activity
 import android.os.Bundle
-import androidx.appcompat.app.AppCompatActivity
 import android.widget.TextView
+import android.view.Gravity
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val textView = TextView(this)
-        textView.text = "حراج الشفا - مرحبا!"
-        textView.textSize = 24f
-        textView.setPadding(50, 200, 50, 50)
+        textView.text = "حراج الشفا - شغال 100% \nالنسخة التجريبية"
+        textView.textSize = 22f
+        textView.gravity = Gravity.CENTER
+        textView.setPadding(50, 300, 50, 50)
         setContentView(textView)
     }
 }
