@@ -1,6 +1,6 @@
 package com.haraj.alshafa
 
-import android.app.Activity
+import androidx.appcompat.app.AppCompatActivity
 import android.app.AlertDialog
 import android.content.Intent
 import android.graphics.Color
@@ -17,7 +17,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 
-class MainActivity : Activity() {
+class MainActivity : AppCompatActivity() {
     private val db = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
     private lateinit var rv: RecyclerView
