@@ -9,7 +9,6 @@ import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.view.Gravity
-import android.view.View
 import android.view.WindowManager
 import android.widget.*
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -18,104 +17,117 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 
-data class Ad(var id:String="", val title:String="", val price:String="", val city:String="", val phone:String="", val cat:String="", val desc:String="", val uid:String="", val userName:String="", val time:Long=System.currentTimeMillis())
-data class Comment(val text:String="", val userName:String="", val uid:String="", val time:Long=System.currentTimeMillis())
-data class ChatMsg(val text:String="", val fromUid:String="", val time:Long=System.currentTimeMillis())
-
 class MainActivity : Activity() {
     private val db = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
-    private var currentScreen = "home"
-    private lateinit var contentFrame: FrameLayout
-    private lateinit var adapter: AdAdapter
+    private lateinit var rv: RecyclerView
+
+    data class Ad(var id:String="", val title:String="", val price:String="", val city:String="", val phone:String="", val cat:String="", val desc:String="", val uid:String="", val userName:String="", val time:Long=0)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN)
-        window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-        if (auth.currentUser == null) showAuth() else showMain()
+        if(auth.currentUser==null) showLogin() else showHome()
     }
 
-    private fun showAuth(){
-        val root = LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; gravity=Gravity.CENTER; setPadding(60,0,60,0); background=GradientDrawable().apply { colors=intArrayOf(Color.parseColor("#050A14"), Color.parseColor("#0D1B2A")); orientation=GradientDrawable.Orientation.TOP_BOTTOM } }
-        root.addView(TextView(this).apply { text="⚜️ حراج الشعفة ⚜️\nالأسطورة"; textSize=28f; setTextColor(Color.parseColor("#FFD700")); typeface=Typeface.DEFAULT_BOLD; gravity=Gravity.CENTER; setPadding(0,0,0,60) })
-        val card = LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; setPadding(50,50,50,50); background=GradientDrawable().apply { cornerRadius=40f; setColor(Color.parseColor("#162032")); setStroke(2, Color.parseColor("#FFD700")) } }
-        val eName = inp("اسمك (للتسجيل)"); val eEmail = inp("البريد"); val ePass = inp("كلمة السر").apply { inputType=129 }
-        val btnLogin = btn("✨ دخول أسطوري","#FFD700","#000000") {
-            if(eEmail.text.isEmpty()||ePass.text.isEmpty()){ toast("عبي البيانات"); return@btn }
-            auth.signInWithEmailAndPassword(eEmail.text.toString(), ePass.text.toString()).addOnSuccessListener { showMain() }.addOnFailureListener { toast(it.message?:"خطأ") }
-        }
-        val btnReg = btn("👑 إنشاء حساب جديد","#FF6B00","#FFFFFF") {
-            if(eEmail.text.isEmpty()||ePass.text.isEmpty()||eName.text.isEmpty()){ toast("عبي الكل"); return@btn }
-            auth.createUserWithEmailAndPassword(eEmail.text.toString(), ePass.text.toString()).addOnSuccessListener {
-                val m = mapOf("name" to eName.text.toString(), "email" to eEmail.text.toString(), "phone" to "", "time" to System.currentTimeMillis())
-                db.collection("users").document(it.user!!.uid).set(m); showMain()
-            }.addOnFailureListener { toast(it.message?:"خطأ") }
-        }
-        card.addView(eName); card.addView(eEmail); card.addView(ePass); card.addView(btnLogin); card.addView(btnReg)
-        root.addView(card); setContentView(root)
-    }
-
-    private fun showMain(){
-        val root = LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; setBackgroundColor(Color.parseColor("#070D17")) }
-        contentFrame = FrameLayout(this).apply { layoutParams=LinearLayout.LayoutParams(-1,-1).apply { weight=1f } }
-        root.addView(contentFrame)
-        root.addView(createBottomBar(root))
+    fun showLogin(){
+        val root = LinearLayout(this).apply{orientation=LinearLayout.VERTICAL; gravity=Gravity.CENTER; setPadding(50,50,50,50); setBackgroundColor(Color.parseColor("#070D17"))}
+        val t = TextView(this).apply{text="⚜️ حراج الشعفة\nالأسطوري"; textSize=26f; setTextColor(Color.parseColor("#FFD700")); gravity=Gravity.CENTER; setPadding(0,0,0,40); typeface=Typeface.DEFAULT_BOLD}
+        val eEmail = EditText(this).apply{hint="البريد"; setTextColor(Color.WHITE)}
+        val ePass = EditText(this).apply{hint="كلمة السر"; inputType=129; setTextColor(Color.WHITE)}
+        val eName = EditText(this).apply{hint="اسمك (للتسجيل)"; setTextColor(Color.WHITE)}
+        val b1 = Button(this).apply{text="دخول"; setOnClickListener{
+            auth.signInWithEmailAndPassword(eEmail.text.toString(), ePass.text.toString()).addOnSuccessListener{showHome()}.addOnFailureListener{Toast.makeText(this@MainActivity,it.message,Toast.LENGTH_SHORT).show()}
+        }}
+        val b2 = Button(this).apply{text="إنشاء حساب جديد"; setOnClickListener{
+            auth.createUserWithEmailAndPassword(eEmail.text.toString(), ePass.text.toString()).addOnSuccessListener{
+                db.collection("users").document(it.user!!.uid).set(mapOf("name" to eName.text.toString(), "email" to eEmail.text.toString())); showHome()
+            }.addOnFailureListener{Toast.makeText(this@MainActivity,it.message,Toast.LENGTH_SHORT).show()}
+        }}
+        root.addView(t); root.addView(eName); root.addView(eEmail); root.addView(ePass); root.addView(b1); root.addView(b2)
         setContentView(root)
-        showHomeScreen()
     }
 
-    private fun createBottomBar(root: LinearLayout): LinearLayout {
-        val bottom = LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL; setPadding(10,12,10,25); gravity=Gravity.CENTER; background=GradientDrawable().apply { setColor(Color.parseColor("#0D1B2A")) } }
-        fun item(icon:String, label:String, id:String): LinearLayout {
-            val l = LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; gravity=Gravity.CENTER; layoutParams=LinearLayout.LayoutParams(0,-2).apply { weight=1f } }
-            l.addView(TextView(this).apply { text=icon; textSize=22f; gravity=Gravity.CENTER; setTextColor(if(currentScreen==id) Color.parseColor("#FFD700") else Color.parseColor("#6A7A8A")) })
-            l.addView(TextView(this).apply { text=label; textSize=10f; gravity=Gravity.CENTER; setTextColor(if(currentScreen==id) Color.parseColor("#FFD700") else Color.parseColor("#6A7A8A")); typeface=Typeface.DEFAULT_BOLD })
-            l.setOnClickListener { currentScreen=id; when(id){ "home"->showHomeScreen(); "my"->showMyAds(); "msg"->showMessages(); "profile"->showProfile() }; root.removeView(bottom); root.addView(createBottomBar(root)) }
-            return l
+    fun showHome(){
+        val main = LinearLayout(this).apply{orientation=LinearLayout.VERTICAL; setBackgroundColor(Color.parseColor("#070D17"))}
+        val head = TextView(this).apply{text="👑 حراج الشعفة - فخم كامل الشاشة"; textSize=16f; setTextColor(Color.WHITE); setPadding(30,80,30,20); typeface=Typeface.DEFAULT_BOLD}
+        rv = RecyclerView(this).apply{layoutManager=LinearLayoutManager(this@MainActivity)}
+        main.addView(head); main.addView(rv, LinearLayout.LayoutParams(-1,-1).apply{weight=1f})
+        val bottom = LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL; setPadding(0,15,0,15); setBackgroundColor(Color.parseColor("#0D1B2A"))}
+        val bHome = TextView(this).apply{text="🏠 الرئيسية"; gravity=Gravity.CENTER; setTextColor(Color.parseColor("#FFD700")); layoutParams=LinearLayout.LayoutParams(0,-2).apply{weight=1f}; setOnClickListener{showHome()}}
+        val bAdd = TextView(this).apply{text="＋ نشر"; gravity=Gravity.CENTER; setTextColor(Color.BLACK); background=GradientDrawable().apply{cornerRadius=30f; setColor(Color.parseColor("#FFD700"))}; layoutParams=LinearLayout.LayoutParams(0,-2).apply{weight=1f}; setOnClickListener{showAdd()}}
+        val bProfile = TextView(this).apply{text="👤 حسابي"; gravity=Gravity.CENTER; setTextColor(Color.WHITE); layoutParams=LinearLayout.LayoutParams(0,-2).apply{weight=1f}; setOnClickListener{showProfile()}}
+        val bOut = TextView(this).apply{text="🚪 خروج"; gravity=Gravity.CENTER; setTextColor(Color.WHITE); layoutParams=LinearLayout.LayoutParams(0,-2).apply{weight=1f}; setOnClickListener{auth.signOut(); showLogin()}}
+        bottom.addView(bHome); bottom.addView(bAdd); bottom.addView(bProfile); bottom.addView(bOut)
+        main.addView(bottom)
+        setContentView(main)
+        loadAds()
+    }
+
+    fun loadAds(){
+        db.collection("ads").orderBy("time", Query.Direction.DESCENDING).addSnapshotListener{snap,_->
+            val list = snap?.documents?.map{d-> Ad(id=d.id, title=d.getString("title")?:"", price=d.getString("price")?:"", city=d.getString("city")?:"", phone=d.getString("phone")?:"", cat=d.getString("cat")?:"", desc=d.getString("desc")?:"", uid=d.getString("uid")?:"", userName=d.getString("userName")?:"")}?: emptyList()
+            rv.adapter = object: RecyclerView.Adapter<RecyclerView.ViewHolder>(){
+                override fun getItemCount()=list.size
+                override fun onCreateViewHolder(p:android.view.ViewGroup,t:Int): RecyclerView.ViewHolder{
+                    val card = LinearLayout(p.context).apply{orientation=LinearLayout.VERTICAL; setPadding(30,30,30,30); background=GradientDrawable().apply{cornerRadius=20f; setColor(Color.parseColor("#121C2A"))}; layoutParams=RecyclerView.LayoutParams(-1,-2).apply{setMargins(20,10,20,10)}}
+                    return object: RecyclerView.ViewHolder(card){}
+                }
+                override fun onBindViewHolder(h:RecyclerView.ViewHolder,p:Int){
+                    val ad=list[p]; val c=h.itemView as LinearLayout; c.removeAllViews()
+                    c.addView(TextView(c.context).apply{text="${ad.cat} • ${ad.city} • ${ad.userName}"; textSize=11f; setTextColor(Color.parseColor("#FFD700"))})
+                    c.addView(TextView(c.context).apply{text=ad.title; textSize=16f; setTextColor(Color.WHITE); typeface=Typeface.DEFAULT_BOLD})
+                    c.addView(TextView(c.context).apply{text="💰 ${ad.price}"; textSize=13f; setTextColor(Color.LTGRAY)})
+                    c.setOnClickListener{showDetail(ad)}
+                }
+            }
         }
-        bottom.addView(item("🏠","الرئيسية","home")); bottom.addView(item("📦","إعلاناتي","my"))
-        bottom.addView(TextView(this).apply { text="＋"; textSize=26f; gravity=Gravity.CENTER; setTextColor(Color.BLACK); setPadding(0,15,0,15); background=GradientDrawable().apply { shape=GradientDrawable.OVAL; colors=intArrayOf(Color.parseColor("#FFD700"), Color.parseColor("#FF6B00")) }; layoutParams=LinearLayout.LayoutParams(120,120).apply { setMargins(10,0,10,0) }; setOnClickListener { showAddDialog() } })
-        bottom.addView(item("💬","رسائلي","msg")); bottom.addView(item("👤","حسابي","profile"))
-        return bottom
     }
 
-    private fun showHomeScreen(){
-        val lay = LinearLayout(this).apply { orientation=LinearLayout.VERTICAL }
-        lay.addView(TextView(this).apply { text="👑 حراج الشعفة الأسطوري"; textSize=18f; setTextColor(Color.WHITE); typeface=Typeface.DEFAULT_BOLD; setPadding(40,80,40,30); background=GradientDrawable().apply { colors=intArrayOf(Color.parseColor("#0D1B2A"), Color.parseColor("#1B2A41")) } })
-        val filterScroll = HorizontalScrollView(this).apply { setPadding(0,15,0,5) }
-        val filterRow = LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL; setPadding(20,0,20,0) }
-        listOf("الكل","سيارات","عقار","مواشي","أجهزة","أثاث","عام").forEach { cat ->
-            val chip = TextView(this).apply { text=cat; setPadding(38,14,38,14); textSize=12f; typeface=Typeface.DEFAULT_BOLD; setTextColor(if(cat=="الكل") Color.BLACK else Color.WHITE); background=GradientDrawable().apply { cornerRadius=50f; setColor(if(cat=="الكل") Color.parseColor("#FFD700") else Color.parseColor("#162032")) }; layoutParams=LinearLayout.LayoutParams(-2,-2).apply { setMargins(10,0,10,0) }; setOnClickListener { loadAds(cat) } }
-            filterRow.addView(chip)
-        }
-        filterScroll.addView(filterRow); lay.addView(filterScroll)
-        val rv = RecyclerView(this).apply { layoutManager=LinearLayoutManager(this@MainActivity) }
-        adapter = AdAdapter(mutableListOf()) { ad -> showAdDetail(ad) }; rv.adapter = adapter
-        lay.addView(rv, LinearLayout.LayoutParams(-1,-1).apply { weight=1f })
-        contentFrame.removeAllViews(); contentFrame.addView(lay); loadAds("الكل")
+    fun showDetail(ad:Ad){
+        val lay = LinearLayout(this).apply{orientation=LinearLayout.VERTICAL; setPadding(20,20,20,20)}
+        lay.addView(TextView(this).apply{text=ad.title+"\n"+ad.desc+"\n\n👤 ${ad.userName}\n📍 ${ad.city}\n💰 ${ad.price}"; setTextColor(Color.WHITE)})
+        val eComment = EditText(this).apply{hint="اكتب تعليق..."}
+        val btnComment = Button(this).apply{text="إرسال تعليق"; setOnClickListener{
+            if(eComment.text.isEmpty()) return@setOnClickListener
+            val cm = mapOf("text" to eComment.text.toString(), "userName" to (auth.currentUser?.email?.substringBefore("@")?:"مستخدم"), "uid" to auth.currentUser!!.uid, "time" to System.currentTimeMillis())
+            db.collection("ads").document(ad.id).collection("comments").add(cm); Toast.makeText(this@MainActivity,"تم التعليق",Toast.LENGTH_SHORT).show(); eComment.setText("")
+        }}
+        val btnChat = Button(this).apply{text="💬 مراسلة صاحب الإعلان"; setOnClickListener{
+            if(auth.currentUser!!.uid==ad.uid){Toast.makeText(this@MainActivity,"هذا إعلانك",Toast.LENGTH_SHORT).show(); return@setOnClickListener}
+            val chatId = ad.id+"_"+auth.currentUser!!.uid
+            db.collection("chats").document(chatId).set(mapOf("adId" to ad.id, "adTitle" to ad.title, "user1" to auth.currentUser!!.uid, "user2" to ad.uid, "last" to "مرحبا بخصوص ${ad.title}", "time" to System.currentTimeMillis()))
+            Toast.makeText(this@MainActivity,"تم إرسال رسالة",Toast.LENGTH_SHORT).show()
+        }}
+        val btnWa = Button(this).apply{text="💚 واتساب"; setOnClickListener{try{startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/${ad.phone}")))}catch(_:Exception){}}}
+        lay.addView(eComment); lay.addView(btnComment); lay.addView(btnChat); lay.addView(btnWa)
+        AlertDialog.Builder(this).setTitle("تفاصيل").setView(lay).setPositiveButton("إغلاق",null).show()
     }
 
-    private fun loadAds(cat:String){
-        val q = if(cat=="الكل") db.collection("ads").orderBy("time", Query.Direction.DESCENDING) else db.collection("ads").whereEqualTo("cat",cat).orderBy("time", Query.Direction.DESCENDING)
-        q.addSnapshotListener { snap,_ -> val list = snap?.documents?.map { d-> val a=d.toObject(Ad::class.java)!!; a.id=d.id; a }?.toMutableList()?: mutableListOf(); adapter.update(list) }
+    fun showAdd(){
+        val lay = LinearLayout(this).apply{orientation=LinearLayout.VERTICAL; setPadding(20,20,20,20)}
+        val eT=EditText(this).apply{hint="عنوان"}; val eP=EditText(this).apply{hint="سعر"}; val eC=EditText(this).apply{hint="مدينة"}; val ePh=EditText(this).apply{hint="واتساب"}; val eD=EditText(this).apply{hint="وصف"}
+        lay.addView(eT); lay.addView(eP); lay.addView(eC); lay.addView(ePh); lay.addView(eD)
+        AlertDialog.Builder(this).setTitle("نشر إعلان").setView(lay).setPositiveButton("نشر"){_,_->
+            db.collection("users").document(auth.currentUser!!.uid).get().addOnSuccessListener{u->
+                val name=u.getString("name")?:"مستخدم"
+                val ad=mapOf("title" to eT.text.toString(), "price" to eP.text.toString(), "city" to eC.text.toString(), "phone" to ePh.text.toString(), "desc" to eD.text.toString(), "cat" to "عام", "uid" to auth.currentUser!!.uid, "userName" to name, "time" to System.currentTimeMillis())
+                db.collection("ads").add(ad); Toast.makeText(this,"تم النشر",Toast.LENGTH_SHORT).show()
+            }
+        }.setNegativeButton("إلغاء",null).show()
     }
 
-    private fun showAdDetail(ad:Ad){
-        val lay = LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; setPadding(30,20,30,20) }
-        lay.addView(TextView(this).apply { text="⚜️ ${ad.cat} • ${ad.city}"; textSize=12f; setTextColor(Color.parseColor("#FFD700")) })
-        lay.addView(TextView(this).apply { text=ad.title; textSize=20f; setTextColor(Color.WHITE); typeface=Typeface.DEFAULT_BOLD; setPadding(0,15,0,10) })
-        lay.addView(TextView(this).apply { text="💰 ${ad.price}\n${ad.desc}\n\n👤 ${ad.userName}"; textSize=14f; setTextColor(Color.parseColor("#CCCCCC")) })
-        lay.addView(btn("💬 مراسلة داخل التطبيق","#162032","#FFD700") { openChat(ad) })
-        lay.addView(btn("💚 واتساب فوري","#25D366","#FFF") { try{ startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/${ad.phone}")))}catch(_:Exception){} })
-        lay.addView(btn("📞 اتصال","#FF6B00","#FFF") { try{ startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:${ad.phone}")))}catch(_:Exception){} })
-        lay.addView(TextView(this).apply { text="\n💬 التعليقات:"; textSize=16f; setTextColor(Color.WHITE); typeface=Typeface.DEFAULT_BOLD })
-        val rvC = RecyclerView(this).apply { layoutManager=LinearLayoutManager(this@MainActivity); layoutParams=LinearLayout.LayoutParams(-1,400) }
-        val cList = mutableListOf<Comment>(); val cAdapter = CommentAdapter(cList); rvC.adapter=cAdapter; lay.addView(rvC)
-        db.collection("ads").document(ad.id).collection("comments").orderBy("time").addSnapshotListener { snap,_ -> cList.clear(); snap?.forEach { cList.add(it.toObject(Comment::class.java)) }; cAdapter.notifyDataSetChanged() }
-        val eComment = inp("اكتب تعليق فخم..."); val btnSend = btn("إرسال التعليق ✨","#FFD700","#000") {
-            if(eComment.text.isEmpty()) return@btn
-            val userName = auth.currentUser?.email?.substringBefore("@")?:"مستخدم"
+    fun showProfile(){
+        val lay = LinearLayout(this).apply{orientation=LinearLayout.VERTICAL; gravity=Gravity.CENTER; setPadding(40,100,40,40); setBackgroundColor(Color.parseColor("#070D17"))}
+        lay.addView(TextView(this).apply{text=auth.currentUser?.email?:""; textSize=18f; setTextColor(Color.WHITE); gravity=Gravity.CENTER; setPadding(0,0,0,30)})
+        val eName=EditText(this).apply{hint="اسم جديد"; setTextColor(Color.WHITE)}; val ePhone=EditText(this).apply{hint="رقم جديد"; setTextColor(Color.WHITE)}
+        db.collection("users").document(auth.currentUser!!.uid).get().addOnSuccessListener{d-> eName.setText(d.getString("name")?:""); ePhone.setText(d.getString("phone")?:"")}
+        val bSave=Button(this).apply{text="حفظ البروفايل"; setOnClickListener{db.collection("users").document(auth.currentUser!!.uid).update(mapOf("name" to eName.text.toString(), "phone" to ePhone.text.toString())).addOnSuccessListener{Toast.makeText(this@MainActivity,"تم الحفظ",Toast.LENGTH_SHORT).show(); showHome()}}}
+        val bBack=Button(this).apply{text="رجوع للرئيسية"; setOnClickListener{showHome()}}
+        lay.addView(eName); lay.addView(ePhone); lay.addView(bSave); lay.addView(bBack)
+        setContentView(lay)
+    }
+}ستخدم"
             val c = Comment(eComment.text.toString(), userName, auth.currentUser!!.uid)
             db.collection("ads").document(ad.id).collection("comments").add(c); eComment.setText("")
         }
